@@ -101,11 +101,13 @@ Claude Codeは**プロジェクトルートのCLAUDE.mdをセッション開始�
 │   │   └── NUCLEO-F429ZI/
 │   │       ├── CLAUDE.md
 │   │       ├── pin_assignment.md         # 評価ボードのMCUピン⇔コネクタ/機能 対応表
+│   │       ├── net_connectivity.md       # ★新規: SoCピン⇔接続先IC/ピンの接続表（回路図由来）
 │   │       └── peripheral_connections.md # LED/ボタン/センサ等オンボード周辺の接続
 │   └── 08_Product_Boards/                # ★新規: 製品ボードのピン配置・差分
 │       └── Model_Y/
 │           ├── CLAUDE.md
-│           ├── pin_assignment.md         # 製品ボードのピン配置（回路図+ポート表を統合）
+│           ├── pin_assignment.md         # 製品ボードのピン配置（ポート表Excelから統合）
+│           ├── net_connectivity.md       # ★新規: SoCピン⇔接続先IC/ピンの接続表（回路図由来）
 │           └── pin_diff_vs_NUCLEO-F429ZI.md  # 評価ボードとの差分（コード移植の根拠）
 │
 └── 01_Repositories/                      # [Storage Real Assets] 実体（原則4参照: ドキュメント系はVaultへ代替、実装資産系はVaultと併存）
@@ -123,6 +125,8 @@ Claude Codeは**プロジェクトルートのCLAUDE.mdをセッション開始�
 ```
 
 元案からの変更点は「各カテゴリ配下にCLAUDE.mdを追加した」ことに加え、コード生成のために **`06_Coding_Standards/`（規約）**・**`07_Eval_Boards/`（評価ボードのピン配置）**・**`08_Product_Boards/`（製品ボードのピン配置・差分）**・**`01_Repositories/Templates/`（プロジェクト雛形）**・**`01_Repositories/Port_Tables/`（ポート表原本）** を新設し、さらに資料生成のために **`03_BSPs/*/setup_guide.md`・`build_guide.md`（BSP導入・ビルド手順書）** と **`04_Legacy_Assets/*/module_analysis.md`（旧製品解析資料）**、本ドキュメント自体の置き場所として **`_design/`（自動読み込み対象外）**、そして固有名詞をトークン消費少なく解決するための **`_index/registry.md`** を追加したことです。既存ディレクトリの意味は変えていません。
+
+**補足**: PDF/Excel変換の実行手順（`vault-convert`スキル、回路図PDFの接続表化を担う`schematic-netmap`スキル）は、`~/global_context/`の外側、Claude Codeの標準的なSkill置き場（ユーザー単位なら`~/.claude/skills/<スキル名>/SKILL.md`）に配置します。Vaultが「データの共有」、Skillが「手順の共有」という役割分担です（5章参照）。
 
 ---
 
@@ -154,14 +158,19 @@ Markdownナレッジ: `~/global_context/00_Vault/`
 2. ヒットしたPathのMarkdownを読み、内容があればそれで回答する
 3. registry.mdにヒットしない場合、`01_Repositories/Schematics_PDFs/` 配下を対象語で
    `glob`/`find` し、原本PDFの有無を確認する（ファイル名検索のみ、中身は読まない）
-4. 原本PDFが見つかったら5章の手順（検証パス含む）でMarkdown化・検証してVaultに保存し、
-   **`registry.md` にも1行追記する**（検証未了のものは追記しない。次回以降は手順1で即座にヒットする）
+4. 原本PDFが見つかったら変換する。**文章系PDF/Excelなら`vault-convert`スキル、
+   回路図（配線図）PDFなら`schematic-netmap`スキル**を使ってMarkdown化・検証・
+   Vault保存・registry.md登録までを行わせること（検証未了のものはregistry.mdに
+   追記しない。次回以降は手順1で即座にヒットする）
 5. registry.mdにも原本にも見つからない場合のみ、ユーザーに確認する
 
 ## 行動ルール
 - レジスタ/ピン配置/RTOS/BSP情報が必要な時は、まず該当カテゴリのサブディレクトリ
   まで絞ってgrep検索すること。Vault全体やRepositories全体を再帰的に読み込まないこと。
 - 各サブディレクトリのCLAUDE.mdに詳細な参照ルールがあるので、そちらに従うこと。
+- 原本をVaultへ変換する時は、手順を都度組み立てず、文章系PDF/Excelなら
+  `vault-convert`スキル、回路図（配線図）PDFなら`schematic-netmap`スキルを
+  呼び出すこと（いずれも変換・セルフレビュー・registry登録までを一貫して行う）。
 - 新しい固有名詞（SoC名・ボード名・BSP名など）のMarkdownをVaultに追加した時は、
   検証済みであれば `00_Vault/_index/registry.md` にも1行追記すること
   （5章・7章・9章のどの生成フローでも共通のルール）。追記を忘れても致命的ではないが、
@@ -243,36 +252,39 @@ SoC名・評価ボード名・製品ボード名・BSP名などの固有名詞�
 
 ---
 
-## 5. PDF/Excel → Markdown変換フロー（Just-in-Time版）
+## 5. PDF/Excel → Markdown変換フロー（Just-in-Time版、2つのSkillとして実装）
 
 元案は「PDFをコピーしてWeb版Claudeに貼り付け」という完全手動フローでしたが、**Claude CodeのReadツールはPDFを直接ページ範囲指定で読み込めます**。Web版へのコピペは不要です。
 
-### 5-1. PDF（データシート・評価ボードマニュアル・製品ボード回路図）
-1. PDFを該当する `01_Repositories/Schematics_PDFs/` 配下（`MCU_Datasheets/` / `Eval_Boards/` / `Product_Boards/`）に置く（原本として保管）
-2. 該当情報が必要になったら、Claude Codeに次のように依頼する:
-   > 「`01_Repositories/Schematics_PDFs/STM32F4/RM0090.pdf` の p.450-470（USARTレジスタ章）を読み、6章のテンプレートに従ってMarkdown化し、`00_Vault/01_MCUs/STM32F4/usart_registers.md` に保存して」
-3. Claude Codeが変換・保存まで一括で行う（Web版との往復が不要になる）
-4. **セルフレビュー（検証パス）を行う**: 変換を担当したセッション内で、保存したMarkdownと元PDFの該当ページをもう一度読み比べさせ、特にレジスタのビット位置・オフセット・リセット値・ピン番号など数値情報を優先的に照合させる。不一致があれば修正してから確定する（詳細は5-3参照）
-5. 大きな章をまとめて変換したい場合は、章ごとにサブエージェントへ並列で投げることもできる
-6. **その型番/ボードがまだ `00_Vault/_index/registry.md` に無ければ、1行追記する**（3-1補足参照）。検証済みのものだけを登録することで、registry.md経由でヒットする情報は常に検証済みという状態を保てる
+この変換手順（PDF/Excelの読み込み・Markdown化・セルフレビュー検証・registry.md登録）は、以前は本章に手順として書き下していましたが、**現在はClaude Codeの Skill として切り出しています**。理由は2つあります。
 
-### 5-2. ポート表（Excel）
-ポート表は多くの場合Excel（`.xlsx`）で管理されており、Claude CodeのReadツールはPDF/画像/テキストには対応していますが、xlsxを直接構造化して読める保証がありません。以下いずれかの方法で一度テキスト化してから読み込ませます。
+- CLAUDE.mdを薄く保つ原則2と同じ考え方で、詳細手順は「普段は読み込まれず、必要な時だけ呼び出される」形にする方が理にかなっている
+- 手順が「1行のCLAUDE.mdルール」より厳密に定義されるため、検証パスやregistry.md登録の実行漏れが起きにくくなる
 
-- **手軽な方法**: Excel側で対象シートを「CSVとして保存」し、CSV（プレーンテキスト）をClaude Codeに読ませる
-- **自動化する場合**: Bashツール経由で `python -c "import pandas as pd; pd.read_excel(...).to_csv(...)"` のような変換コマンドを一度実行し、CSV化してから読ませる（都度Excelを手動操作しなくて済む）
+原本の性質によって、2つのスキルに分かれています。
 
-変換後は6章のテンプレートに従い、`00_Vault/08_Product_Boards/<製品名>/pin_assignment.md` のような構造化Markdownに落とし込みます。Excel/CSV由来の場合も5-3の検証パスは同様に行います（元CSVと生成Markdownの表を突き合わせる）。
+| 原本の性質 | スキル | 出力 |
+|---|---|---|
+| データシート等の文章系PDF、ポート表Excel/CSV（表形式で情報が完結している） | `vault-convert`（`skills/vault-convert/SKILL.md`） | レジスタ表・`pin_assignment.md`など |
+| 回路図PDF（シンボルと配線図として情報が表現されている） | `schematic-netmap`（`skills/schematic-netmap/SKILL.md`） | `net_connectivity.md`（SoCピン⇔接続先IC/ピンの一覧） |
 
-### 5-3. 変換の検証パス（人間レビューの代わりにClaude自身で二重チェックする）
-PDF→Markdown変換はLLMが行うため、レジスタのビット割り当てやピン番号を取り違えるリスクがあります。一度Vaultに保存されると以降のセッション全てがそれを無条件に信じてしまうため、**人間が目視確認する代わりに、Claude Code自身に独立した検証パスを踏ませます**。
+回路図は文章でもテーブルでもなく図面であり、配線を目視で辿って接続関係を特定する必要があるため、テキスト/表の構造化変換とは異なる手順（シート横断でのネット追跡・接続先ピンの特定）が要ります。これが2スキルに分けている理由です。
 
-1. 変換直後、生成したMarkdownをいったん脇に置き、元PDF（または元CSV/Excel）の該当ページ・該当シートをあらためて読ませる
-2. 生成したMarkdownの表と、読み直した原本を1項目ずつ突き合わせさせる（特に数値: ビット位置・オフセット・リセット値・ピン番号・信号名）
-3. 不一致があれば、その場でMarkdownを修正してから保存を確定する
-4. 検証が終わったらfrontmatterに `verified: true` と検証日を記録する（6章のテンプレート参照）
+CLAUDE.md側には「該当スキルを使うこと」という短い指示だけを書き、**詳細な手順・frontmatterテンプレート・検証ルールは各スキルのSKILL.mdを正とします**。以下は概要のみです。
 
-同一セッション内の「生成→検証」の2パスは、変換対象のページ数に対してもう一度分のトークンを使いますが、**変換自体が一度きり（Just-in-Time）である以上、その場で正確性を担保しておく方が、誤ったレジスタ値が将来のセッションで繰り返し使われ続けるリスクよりずっと安いコスト**です。
+### 5-1. 概要（`vault-convert`）
+1. 原本（PDF or Excel/CSV）を `01_Repositories/` の該当カテゴリに置く
+2. Claude Codeに「〜を調べて/Vaultに追加して」と依頼するか、`vault-convert`スキルを明示的に呼び出す
+3. スキルが「変換 → セルフレビュー（原本との突き合わせ）→ `verified: true` 確定 → registry.md登録」まで一括で行う
+4. 大きな章をまとめて変換したい場合は、章ごとにサブエージェントへ並列で投げることもできる
+
+### 5-2. 概要（`schematic-netmap`）
+1. 回路図PDFを `01_Repositories/Schematics_PDFs/{Eval_Boards,Product_Boards}/` に置く
+2. 対象SoCのシートを特定し、各ピンから配線・ネットラベルを辿って接続先IC・ピン・信号の意味を一覧化する（電源/グランド系ピンはデフォルト対象外）
+3. 判読できない接続は「要確認」と明記し、憶測で埋めない
+4. `net_connectivity.md` として保存し、`vault-convert`と同様にセルフレビュー→`verified: true`→registry.md登録まで行う
+
+セルフレビューを人間の目視確認の代わりに挟むのは、**一度Vaultに保存された情報は以降のセッション全てが無条件に信じてしまうため**です。生成→検証の2パス分トークンを追加で使いますが、変換自体が一度きり（Just-in-Time）である以上、その場で正確性を担保する方が、誤った値が将来のセッションで繰り返し使われ続けるリスクよりずっと安いコストです。
 
 これにより「1,000ページを最初に全部変換する」という重い前提がなくなり、**実際に使った分だけ資産が育つ**運用になります。2機種目・3機種目の開発では、既存Vaultのヒット率が上がり変換の手間はどんどん減ります。
 
@@ -280,7 +292,7 @@ PDF→Markdown変換はLLMが行うため、レジスタのビット割り当て
 
 ## 6. Markdownファイルのテンプレート（frontmatter付き）
 
-grepの表記ゆれ吸収と、鮮度検証のため、変換時は必ず以下の情報を付与します。
+grepの表記ゆれ吸収と、鮮度検証のため、変換時は必ず以下の情報を付与します。**このテンプレートは`vault-convert`スキル内にも同じものを埋め込んであり、実行時はスキル側を正とします**（本章は人間が仕様を確認するための参照用）。テンプレート自体を変更する場合は、この節とスキルの両方を更新してください。
 
 ```markdown
 ---
@@ -288,7 +300,7 @@ title: USART Status Register (USART_SR)
 mcu: STM32F4
 source: RM0090 Rev19, p.450
 converted: 2026-08-23
-verified: true            # 5-3章のセルフレビュー（原本との突き合わせ）を通過したか
+verified: true            # vault-convertスキルのセルフレビュー（原本との突き合わせ）を通過したか
 keywords: [USART, UART, シリアル通信, ステータスレジスタ, TXE, TC, RXNE]
 ---
 
@@ -304,21 +316,21 @@ keywords: [USART, UART, シリアル通信, ステータスレジスタ, TXE, TC
 
 - `source` があることで、後で元データシートの版数と食い違っていないか検証できる
 - `keywords` があることでgrepの表記ゆれ耐性が上がる（"UART"で検索しても"USART"のファイルがヒットする）
-- `verified` があることで、5-3章のセルフレビューを経た情報かどうかをフィルタできる（`verified: false`のまま残っているファイルは要注意、という運用ができる）
+- `verified` があることで、`vault-convert`スキルのセルフレビューを経た情報かどうかをフィルタできる（`verified: false`のまま残っているファイルは要注意、という運用ができる）
 
 変換プロンプト自体（表構造化・ノイズ除去・番号付きリスト化・Erratumは引用ブロック化）は元案4章のルールをそのまま流用してよく、これはClaude Codeへの依頼文にそのまま含めます。
 
-### 6-1. ピン配置表のテンプレート（評価ボード／製品ボード共通）
+### 6-1. ピン配置表のテンプレート（評価ボード／製品ボード共通、`vault-convert`）
 
-回路図PDFやポート表Excelから変換する際は、信号名を軸に統一フォーマットへ揃えます。こうしておくと評価ボードと製品ボードのMarkdownを機械的に突き合わせやすくなります。
+ポート表Excelから変換する際は、信号名を軸に統一フォーマットへ揃えます。こうしておくと評価ボードと製品ボードのMarkdownを機械的に突き合わせやすくなります。
 
 ```markdown
 ---
 board: Model_Y
 board_type: product          # eval / product
-source: 製品ボード回路図 Rev.C, ポート表 v1.2
+source: ポート表 v1.2
 converted: 2026-08-23
-verified: true                # 5-3章のセルフレビューを通過したか
+verified: true                # vault-convertスキルのセルフレビューを通過したか
 keywords: [ピン配置, pinout, GPIO, ポート表]
 ---
 
@@ -327,6 +339,26 @@ keywords: [ピン配置, pinout, GPIO, ポート表]
 | USART2_TX | PA2 | CN1-14 | デバッグUART送信 | 評価ボードと同一 |
 | USART2_RX | PA3 | CN1-15 | デバッグUART受信 | 評価ボードと同一 |
 | LED_STATUS | PB6 | LED1 | ステータスLED | 評価ボードはPA5、製品ボードはPB6に変更 |
+```
+
+### 6-2. ピン接続表のテンプレート（`schematic-netmap`）
+
+回路図PDFから変換する場合は、`pin_assignment.md`とは別に、SoCピン起点で接続先IC・ピン・信号の意味まで含めた接続表を作ります（テンプレート・詳細手順は`schematic-netmap`スキルを正とします）。
+
+```markdown
+---
+board: Model_Y
+board_type: product
+source: 製品ボード回路図 Rev.C (Sheet 3/7, Sheet 5/7)
+converted: 2026-08-23
+verified: true
+keywords: [回路図, ネット接続, pinout, schematic, net connectivity]
+---
+
+| SoCピン# | SoCピン名 | ネット名 | 接続先IC | 接続先ピン# | 接続先ピン名 | 意味/機能 | 備考 |
+|---|---|---|---|---|---|---|---|
+| 45 | PA9 | USART1_TX | U3 (USB-UARTブリッジ) | 2 | TXD | UART1送信→USBブリッジ受信 | Sheet 3 |
+| 12 | PB6 | I2C1_SCL | U5 (温湿度センサ) | 5 | SCL | I2C1クロック | プルアップR22経由、Sheet 5 |
 ```
 
 評価ボード側も同じ表形式（`board_type: eval`）でMarkdown化しておくことで、後述の差分抽出がやりやすくなります。
@@ -390,16 +422,16 @@ keywords: [ピン配置, pinout, GPIO, ポート表]
 ### 9-1. 追加で用意するもの
 - `00_Vault/06_Coding_Standards/`: 命名規則、ディレクトリ構成、ヘッダーコメント規約などをMarkdown化したコーディング規約
 - `00_Vault/07_Eval_Boards/<評価ボード名>/`: 評価ボードのピン配置・オンボード周辺回路（マニュアルPDFから変換）
-- `00_Vault/08_Product_Boards/<製品名>/`: 製品ボードのピン配置（回路図PDF＋ポート表Excelから統合変換）
+- `00_Vault/08_Product_Boards/<製品名>/`: 製品ボードのピン配置（`vault-convert`でポート表Excelから、`schematic-netmap`で回路図PDFから、それぞれ変換）
 - `01_Repositories/Templates/`: 実際にビルド可能な最小プロジェクトスケルトン（Git管理）。新規プロジェクトはここからコピーして始める
 - `01_Repositories/BSPs/`, `01_Repositories/RTOS/`: 評価ボード向けに動作実績のあるBSP/RTOSサンプルの実体（ベンダー提供コード等）
 
 コーディング規約・雛形・評価ボードのピン配置は一度作れば使い回せる資産なので、5章のPDF変換と違ってJust-in-Timeではなく、**最初にまとめて整備しておく**方が効率的です。一方、製品ボード側のピン配置・差分は製品ごとに毎回新しく発生するので、都度Just-in-Timeで作成します。
 
 ### 9-2. 評価ボード→製品ボード移植の具体フロー
-1. `00_Vault/07_Eval_Boards/<評価ボード名>/pin_assignment.md` を確認する（無ければ評価ボードマニュアルPDFから6-1テンプレートで変換）
-2. `00_Vault/08_Product_Boards/<製品名>/pin_assignment.md` を確認する（無ければ製品ボード回路図PDF＋ポート表Excelから変換・統合。5-2章の手順でExcelをCSV化してから読む）
-3. 両者を突き合わせて `00_Vault/08_Product_Boards/<製品名>/pin_diff_vs_<評価ボード名>.md` を作成する（信号ごとに「評価ボードのピン → 製品ボードのピン」の対応表。既にあれば再利用する）
+1. `00_Vault/07_Eval_Boards/<評価ボード名>/pin_assignment.md`（無ければ`vault-convert`スキルで評価ボードマニュアルPDFから変換）と、必要なら`net_connectivity.md`（無ければ`schematic-netmap`スキルで評価ボード回路図PDFから変換）を確認する
+2. `00_Vault/08_Product_Boards/<製品名>/pin_assignment.md`（無ければ`vault-convert`スキルでポート表Excelから変換）と`net_connectivity.md`（無ければ`schematic-netmap`スキルで製品ボード回路図PDFから変換）を確認する
+3. 両者を突き合わせて `00_Vault/08_Product_Boards/<製品名>/pin_diff_vs_<評価ボード名>.md` を作成する（信号ごとに「評価ボードのピン → 製品ボードのピン」の対応表。既にあれば再利用する）。接続先ICまで一致させる必要がある場合は`net_connectivity.md`を根拠にする
 4. 評価ボード向けに動作実績のあるBSP/RTOSコード（`01_Repositories/BSPs/` または `Legacy_Projects/`）を**ファイル名を明示して**参照し、差分表に従ってピン定義・初期化パラメータのみを製品ボード向けに書き換える
 5. `01_Repositories/Templates/` の最小構成雛形をベースに、必要なペリフェラル初期化コードだけを組み込んだ製品ボード向けサンプルを生成する
 6. 生成したコードは規約 `00_Vault/06_Coding_Standards/` に沿っているか確認する
@@ -445,7 +477,9 @@ grepベースでは、言い換えや曖昧な自然文検索（例:「低消費
 | 権限 | 未考慮 | `update-config`スキル/`/permissions`でグローバルパスの読み取りを事前許可 |
 | grep精度 | 素のgrep | frontmatterでキーワード・エイリアスを付与 |
 | 鮮度管理 | なし | `source`（版数・ページ）と`converted`日付を各Markdownに記録 |
-| 変換精度の検証 | なし（変換結果を無条件に信頼） | 5-3章のセルフレビュー工程を追加。Claude自身が原本と再照合し、`verified`フラグを記録してから確定・registry登録 |
+| 変換精度の検証 | なし（変換結果を無条件に信頼） | `vault-convert`スキルにセルフレビュー工程を実装。Claude自身が原本と再照合し、`verified`フラグを記録してから確定・registry登録 |
+| 変換手順の実装形態 | 文書内の手順として記述するのみ | Claude Codeの**Skill**として`vault-convert`（文章系PDF/Excel）と`schematic-netmap`（回路図PDF）を実装。CLAUDE.mdは呼び出しの指示のみを持ち、詳細手順の実行漏れを防ぐ |
+| 回路図PDFの扱い | データシートと同じ手順で表構造化するだけ | `schematic-netmap`スキルを新設。配線を辿ってSoCピン⇔接続先IC/ピン⇔信号の意味まで一覧化する`net_connectivity.md`を生成（ソフトウェア担当が実際に必要とする粒度） |
 | 共有領域のバージョン管理 | 未検討 | 現状は一人運用のため未導入。10-2章に将来のGit管理方針を明記（複数人・複数マシン運用に切り替わる時点で導入） |
 | 呼称 | 「RAG」（実体はgrep検索でありRAGは不正確、「メモリ」もRAMと紛らわしく不適切） | 「共有コンテキストストア」に統一。現状はgrepで十分と割り切り、将来必要ならベクトル検索を追加 |
 | コード生成 | 想定なし | コーディング規約（`06_Coding_Standards/`）とプロジェクト雛形（`Templates/`）を新設し、過去資産を参照優先順位付きで再利用 |
