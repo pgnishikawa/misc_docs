@@ -10,6 +10,37 @@ TI の USB-C PD コントローラ **TPS25751** を初期化（パッチバン�
 - 完了検出: **レジスタポーリング方式**（`I2Ct_IRQ` GPIO は不使用）
 - 実行環境: **ベアメタル**（`R_BSP_SoftwareDelay` でウェイト、I2C 完了はコールバックフラグをポーリング）
 
+## なぜこのロードが必要か（EEPROM 非搭載時）
+
+TPS25751 は起動時に「構成（Application Customization ＋ パッチ）」を読み込んで初めて
+`APP` モードに入り、USB PD / Type-C のポリシーエンジンが動作します。構成のロード経路は
+2 つで、**どちらか一方が必須**です（データシート §8.4.1）。
+
+| 経路 | 説明 |
+|------|------|
+| 外部 EEPROM（I2Cc、7bit アドレス 0x50） | コールドブート時にデバイスが自動ロード（フルフラッシュイメージ） |
+| ホスト（EC）が I2Ct 経由で push | **EEPROM 非搭載構成。本サンプルの `tps25751_load_patch_bundle()` がこれ** |
+
+> データシート §8.4.1: "The device then attempts to load a configuration from an external
+> EEPROM on the I2Cc bus. **If no EEPROM is detected, then the device waits for an external
+> host to load a configuration.**"
+
+**ロード前（`PTCH` モード）の挙動:**
+
+- `MODE(0x03)` / `CMD1(0x08)` / `DATA1(0x09)` / `INT_*(0x14/0x16/0x18)` / `BOOT_FLAGS(0x2D)`
+  以外のレジスタにアクセスできず、PD ステートマシンは実質停止（TRM Table 5-1、JAJA940A §2）。
+- **PDO 設定が無いため、ソース（給電側）としては動作しません。**
+  USB-C を挿してもコントラクト交渉を行わず、**VBUS へ給電しません**。
+- 例外的に動くのは ADCIN2 ストラップで決まる**デッドバッテリ／シンク経路**のみ
+  （基板自身が外部ソースから電力を受けるための経路。給電＝ソース動作とは別物）:
+  - `AlwaysEnableSink` … Type-C 接続時に常にシンク経路 ON（PD 交渉なし）
+  - `SafeMode` … シンク経路も ON にしない（source-only mode 設定も可）。構成ロードまで PD 無効
+  - `NegotiateHighVoltage` … 例外的にデフォルト設定で `APP` に入りシンクとして最大 20V を交渉。EEPROM パッチと併用不可・非推奨
+
+つまり **EEPROM を載せない設計では、電源投入のたびにこの初期化（パッチバンドルのロード）を
+必ず実行する必要があります。** ロードして `APP` に入れば、バンドル内の設定どおりに
+ソース給電・PD 交渉が有効になります。
+
 ## 根拠にした資料
 
 | 資料 | 使用箇所 |
