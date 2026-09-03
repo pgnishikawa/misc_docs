@@ -57,4 +57,6 @@ python3 -c "d=open('work/manual_full.txt').read().split('\x0c'); [open(f'work/pa
 - JTAG 接続シーケンス: `RES#`Low & `TRST#`Low → `TRST#`High（SWJ-DP TAP）→ `RES#`High（AP=0 OCD）→ 認証 & ブートコード完了 → デバッグ許可。
 - セキュリティ品固有: **`MDD` = High でハッシュ JTAG 認証モード**（ブリングアップ時は Low）。`MDD` は 576pin ボール AD7 で `XSPI0_RESET0#` と兼用、`VDD1833_4` ドメイン。
 - OTP 未書き込みなら `AUTHMODEJ = 0x000` = 認証なし（デバッグ許可）。`AUTHMODEJ = 1xx` は JTAG 永久禁止。
-- 初回ブリングアップは **SCI ブート（MD2:0 = 101b）** または **USB ブート（110b）** が安全（ブート ROM が既知の待機状態になる）。
+- デバッグは段階的に解禁: **②SWJ-DP TAP と ③AP=0 OCD は RES# 保持中（ブート前）に到達可、フラッシュ内容に無関係**。**④の本格デバッグ（CoreSight ROM 列挙・コア halt）だけが「内蔵ブートコード実行の完了後」に解禁**（10.3.3 / 図 10.4・10.5）。
+- xSPI ブートでフラッシュ空／CHECK_SUM 不一致時のブート ROM 終端状態は**マニュアルに記載なし**（SCI/USB ブートのみ「エラーコード返却・中断」と明記）。→ まず **"connect under reset"** で ② まで到達するかを確認。
+- MD2:0 を振れるなら初回は **SCI ブート（101b）/ USB ブート（110b）**（失敗挙動が仕様で定義されている）。
