@@ -1,5 +1,7 @@
 # クロック発生回路 / リセット
 
+[← README（目次）へ戻る](README.md)
+
 出典: ユーザーズマニュアル「6. リセット」p.221-235、「7. クロック発生回路」p.236-262、「8. CLMA」p.263-270。
 
 ## リセット
@@ -98,3 +100,7 @@
 - CLMA6: メインクロック発振停止検出 → LOCO へフォールバック。
 - サンプリングクロック: CLMA0/1/2/4 = MOSC÷2（12.5 MHz）、CLMA3 = MOSC÷16、CLMA5 = MOSC÷256。
 - モニタクロック: CLMA0=PLL0÷16(75MHz)、CLMA1=PLL1÷16(62.5MHz)、CLMA2=PLL2÷16(50MHz)、CLMA3=PLL3÷4、CLMA4=PLL4÷32(75MHz)、CLMA5=LOCO(1MHz)、CLMA6=MOSC÷2。
+
+---
+
+[← README（目次）へ戻る](README.md)

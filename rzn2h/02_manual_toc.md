@@ -1,5 +1,7 @@
 # ユーザーズマニュアル 章・節インデックス（PDF ページ番号付き）
 
+[← README（目次）へ戻る](README.md)
+
 出典: R01UH1039JJ0130 Rev.1.30（全 3817 ページ）。番号は **PDF ページ番号** で、`work/pages/pXXXX.txt` と一致。
 レジスタ名まで含む全階層は [appendix_full_toc.md](appendix_full_toc.md)。
 
@@ -557,3 +559,7 @@
 ### 奥付  —  p.3816
 
 ### 裏表紙  —  p.3817
+
+---
+
+[← README（目次）へ戻る](README.md)

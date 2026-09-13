@@ -1,5 +1,7 @@
 # RZ/N2H 概要
 
+[← README（目次）へ戻る](README.md)
+
 出典: ユーザーズマニュアル ハードウェア編 R01UH1039JJ0130 Rev.1.30、「特長」(p.73)〜「1. 概要」(p.74-89)
 
 ## 位置づけ
@@ -21,6 +23,7 @@
 | L2 / L3 | L2 = 0、L3 = 1024 KB (ECC) | — |
 | TCM | — | ATCM 512 KB(ECC) / BTCM 64 KB(ECC) / CTCM 0（各 CPU）。ATCM は 500 MHz で 0 wait、1000 MHz で 1 wait |
 | MPU | — | 2 ステージ MPU (EL2/EL1)、各 24 領域 |
+| 実行状態 | マニュアル表2.1は「Armv8.2-A A64命令セット (AArch64)」と記載。ただし Arm 公式 TRM 確認済み: AArch32 も全 Exception Level で常時利用可能（構成オプションで無効化できない仕様）。**本プロジェクトでは A55 を AArch32 で使用**（[11_memory_performance_comparison.md](11_memory_performance_comparison.md) §5.4 参照）| Armv8-R は AArch32 専用（AArch64 状態自体が存在しない）|
 
 - ATCM の wait は **リセット中のみ** 端子 (CPU0=MDW0, CPU1=MDW1) で 0/1 wait を選択（[04_boot_modes.md](04_boot_modes.md)）。
 - DCLS（デュアルコアロックステップ）は非サポート。
@@ -162,3 +165,7 @@
 - **内部メインバス R** に接続: GMAC(ユニット0)、ETHSW(3 ポート)、ESC(3 ポート)、DMAC(ユニット0/1/2 各 16 ch)、システム SRAM、xSPI(2 ch)、BSC、RSIP、OTP、ブート ROM、SHOSTIF、MBXSEM、ICU/ELC、ノンセーフティ／セーフティ周辺群。
 - **LLPP バス**（Cortex-R52 CPU0/CPU1 アクセス優先）: MTU3、GPT(ユニット0〜8＝30ch/…)、TFU、POE3、POEG、ADC12(ユニット0/1)、DSMIF、エンコーダ I/F SS、SCIE、ENCOUT。
 - I/O ポートは ポート0〜35。
+
+---
+
+[← README（目次）へ戻る](README.md)

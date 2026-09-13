@@ -11,11 +11,16 @@
 > マニュアルは MPU スーパーセットの仕様を記載しており、RZ/T2H と RZ/N2H 両方をカバーします。
 > 製品によっては存在しない端子・レジスタ・機能があります（使用できないレジスタ領域は予約領域）。
 
+Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm アーキテクチャの領域で RZ/N2H マニュアルには記載がない部分）は、`arm/` ディレクトリに取得した Arm 公式ドキュメント（Cortex-A55/R52 TRM、Cortex-R52 Programmer's Guide 等）で裏付けています。一覧・入手元は `arm/README.md` を参照。
+
 ## 現在の調査タスク
 
-**R9A09G087M48GBG 搭載 試作初号機の JTAG デバッガ（PALMiCE4 Model-J / CSIDE）接続不可の切り分け。**
-→ [08_jtag_bringup_troubleshooting.md](08_jtag_bringup_troubleshooting.md)（仮説と確認手順）
-→ 背景の仕様は [07_debug_interface.md](07_debug_interface.md)（マニュアル 10 章の詳細）
+1. ~~R9A09G087M48GBG 搭載 試作初号機の JTAG デバッガ（PALMiCE4 Model-J / CSIDE）接続不可の切り分け。~~
+   → **解決済み（2026-09-12）: ハードウェア不具合。0.8 V を入れるべき PLL 電源に 1.8 V を誤って入力していた。**
+   （切り分け過程は [07_debug_interface.md](07_debug_interface.md) / [08_jtag_bringup_troubleshooting.md](08_jtag_bringup_troubleshooting.md) に記録済み）
+2. **xSPI0 x1 ブート固定＋全コア NORTi の AMP マルチコア・ブリングアップ**（R52 CPU0 → LPDDR4 初期化 → R52 CPU1 + Cortex-A55 Core0〜3 を個別ロード・起動）のロードマップ整備。
+   → [09_xspi0_x1_boot_and_runtime.md](09_xspi0_x1_boot_and_runtime.md)（xSPI0 x1 ブート詳細＋ランタイム操作）
+   → [10_amp_multicore_bringup_roadmap.md](10_amp_multicore_bringup_roadmap.md)（全体ロードマップ：DDR初期化、TZC-400、マルチコア起動レジスタ手順）
 
 ## ドキュメント一覧
 
@@ -28,7 +33,11 @@
 | [05_clocks_reset.md](05_clocks_reset.md) | クロック発生回路（PLL0〜4、内部クロック一覧）、リセット要因、CLMA |
 | [06_hardware_design_guide.md](06_hardware_design_guide.md) | ハードウェアデザインガイドの要点（電源シーケンス、発振回路、各 I/F の接続・レイアウト、未使用端子処理） |
 | [07_debug_interface.md](07_debug_interface.md) | マニュアル 10 章詳細（JTAG/SWD/ETR、BSCANP、TRST#/RES# 接続シーケンス、OCD 認証レジスタ、CoreSight アドレスマップ） |
-| [08_jtag_bringup_troubleshooting.md](08_jtag_bringup_troubleshooting.md) | 試作ボードで JTAG が繋がらないときの切り分け（仮説の優先順位、物理チェックリスト、推奨ブリングアップ手順） |
+| [08_jtag_bringup_troubleshooting.md](08_jtag_bringup_troubleshooting.md) | 試作ボードで JTAG が繋がらないときの切り分け（仮説の優先順位、物理チェックリスト、推奨ブリングアップ手順）※解決済み事案の記録 |
+| [09_xspi0_x1_boot_and_runtime.md](09_xspi0_x1_boot_and_runtime.md) | xSPI0 x1 ブートモードの詳細（ブート ROM 挙動、ローダ配置制約）とランタイムでの xSPI 操作（メモリマッピング／マニュアルコマンド／XiP 直接実行の可否／NOR フラッシュ書き込みの可否） |
+| [10_amp_multicore_bringup_roadmap.md](10_amp_multicore_bringup_roadmap.md) | R52C0→R52C1+A55Core0-3 の AMP マルチコア・ブリングアップ ロードマップ（Master MPU、DDRSS 初期化、TZC-400、アドレス拡張、各コア起動レジスタ手順、ソフトウェア割り込みでのコア間通知）。冒頭にメモリマップ SVG 図＋ Mermaid シーケンス図あり |
+| [11_memory_performance_comparison.md](11_memory_performance_comparison.md) | TCM / SYSRAM / LPDDR4 の速度比較。R52+TCM が最速・最も決定的である理由、A55 に TCM がない制約、混在配置の指針、A55/R52 のキャッシュ構成差、TCM/SYSRAM/DDR/xSPI 各メモリでのキャッシュ有無 |
+| [12_ddr_noncacheable_region_setup.md](12_ddr_noncacheable_region_setup.md) | DDR 上のコア間共有 IPC 領域を「非キャッシュ」にする実装方法（R52 の MPU／A55 の MMU、MAIR 属性設定。※ Arm アーキテクチャ一般知識、RZ/N2H マニュアル非記載である旨を明記）|
 | [appendix_full_toc.md](appendix_full_toc.md) | マニュアル目次の全階層（レジスタ名まで） |
 
 ## 元テキストの扱い（調査用）
