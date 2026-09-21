@@ -5,7 +5,13 @@ RZ/N2L のマイコンから Beckhoff の EtherCAT スレーブコントロー�
 EtherCAT の知識を前提とせず、ET1100 のハードウェアデータシート／レジスタリファレンスの内容から
 ソフトウェア実装に必要な情報を整理しています。
 
-## 読む順番
+## まず読むもの
+
+**[06_implementation_roadmap.md](06_implementation_roadmap.md)** — RZ/N2L 上で ET1100 を
+EtherCAT スレーブとして動かすまでの実装ロードマップ（フェーズ分け・完了条件・詰まりやすい点）。
+以下の01〜05は、このロードマップの各フェーズで参照する詳細資料という位置づけです。
+
+## 読む順番（詳細資料）
 
 | # | ドキュメント | 内容 |
 |---|---|---|
@@ -13,7 +19,8 @@ EtherCAT の知識を前提とせず、ET1100 のハードウェアデータシ�
 | 2 | [02_et1100_overview.md](02_et1100_overview.md) | ET1100 チップ概要（機能一覧、アドレス空間、EEPROM/ESI、リセット、電源、LED、ポート） |
 | 3 | [03_rzn2l_bus_interface.md](03_rzn2l_bus_interface.md) | RZ/N2L の外部バス（SRAM 空間）と ET1100 の非同期 8/16bit µC インタフェースの接続方法・信号対応・タイミング設計 |
 | 4 | [04_software_bringup.md](04_software_bringup.md) | ソフトウェア設計：初期化シーケンス、状態遷移、割り込み設計、EEPROM/ESI 作成、推奨スレーブスタック、ブリングアップ手順 |
-| 5 | [05_register_reference.md](05_register_reference.md) | よく使うレジスタの早見表（アドレス・サイズ・用途） |
+| 5 | [05_register_reference.md](05_register_reference.md) | よく使うレジスタの早見表（アドレス・サイズ・用途）と疎通確認サンプルコード |
+| 6 | [06_implementation_roadmap.md](06_implementation_roadmap.md) | 全体を統合した実装ロードマップ（上記） |
 
 ## 元資料（`ET1100/` 配下）
 
@@ -32,10 +39,11 @@ EtherCAT の知識を前提とせず、ET1100 のハードウェアデータシ�
 
 ## 本ドキュメントに含まれない情報（本リポジトリ外の依存）
 
-- **RZ/N2L のハードウェアユーザーズマニュアル**（外部バス／BSCの電気的タイミング、
-  MPU/キャッシュ設定、割り込みコントローラの詳細）は本リポジトリに含まれていません。
-  `03_rzn2l_bus_interface.md` の RZ/N2L 側の記述は FSP ソースコード（`rz-fsp/`）から
-  確認できる範囲の事実に基づいており、最終確認はマニュアル本体で行ってください。
+- RZ/N2L のハードウェアユーザーズマニュアルに基づく詳細（BSC/CS0のレジスタ設定、
+  I/Oポートのピン設定、割り込みコントローラ等）は [../../rzn2l/docs/](../../rzn2l/docs/)
+  にまとめてあります。`03_rzn2l_bus_interface.md` 執筆時点では同マニュアルが手元になく
+  FSP ソースコード（`rz-fsp/`）のみを根拠にしていた箇所も、その後のマニュアル入手により
+  `rzn2l/docs/07_bsc_cs0_et1100_register_setup.md` 等で裏付け・詳細化されています。
 - **CoE/メールボックス/ESI の正式プロトコル仕様**（ETG.1000.6、ETG.1020、ETG.2000）は
   EtherCAT Technology Group (ETG) が発行するものであり、本リポジトリには含まれていません。
   `04_software_bringup.md` の CoE/PDO マッピングの説明は一般的な実装の考え方の概要に

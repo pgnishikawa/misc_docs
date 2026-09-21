@@ -20,6 +20,90 @@
 | `0x0007` | 1 | Port descriptor | 各ポートの種別(EBUS/MII/未実装) |
 | `0x0008:0x0009` | 2 | ESC features supported | FMMU方式・DC有無等のフラグ |
 
+### 5.1.1 起動時疎通確認サンプルコード
+
+[04_software_bringup.md](04_software_bringup.md) §4.8 の手順1「バス単体の疎通確認」に対応する
+実装例。[03_rzn2l_bus_interface.md](03_rzn2l_bus_interface.md) §3.6 の `et1100_reg_read16()`
+（RZ/N2L の BSC CS0 空間へ `volatile uint16_t*` でアクセスするヘルパ。CS0 のレジスタ設定自体は
+[../../rzn2l/docs/07_bsc_cs0_et1100_register_setup.md](../../rzn2l/docs/07_bsc_cs0_et1100_register_setup.md)
+を参照）を前提とする。
+
+`0x0000`〜`0x0009` は ET1100 が **EEPROM ロード完了後、`AL`/`PDI` の設定に関わらず常に
+固定の既知の値を返す**領域なので、配線・BSCタイミング設定の健全性を最初に確認するのに最適。
+
+```c
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+/* et1100_reg_read16() は 03_rzn2l_bus_interface.md §3.6 で定義済みの前提 */
+extern uint16_t et1100_reg_read16(uint32_t reg_addr);
+
+typedef struct
+{
+    uint8_t  type;                 /* 0x0000 */
+    uint8_t  revision;             /* 0x0001 */
+    uint16_t build;                /* 0x0002:0x0003 */
+    uint8_t  fmmus_supported;      /* 0x0004  期待値: 8 */
+    uint8_t  syncmanagers_supported;/* 0x0005 期待値: 8 */
+    uint8_t  ram_size_kbyte;       /* 0x0006  期待値: 8 (KByte) */
+    uint8_t  port_descriptor;      /* 0x0007 */
+    uint16_t esc_features;         /* 0x0008:0x0009 */
+} et1100_basic_info_t;
+
+/*
+ * ET1100 の基本情報 (0x0000-0x0009) を読み出し、既知の期待値と照合する。
+ *
+ * 戻り値: true  = 期待値と一致（配線・BSCタイミング設定は健全）
+ *         false = 不一致（p_info には読めた値をそのまま格納するので、
+ *                 化け方から原因を推測する。README「よくあるハマりどころ」参照）
+ */
+bool et1100_startup_check(et1100_basic_info_t *p_info)
+{
+    uint16_t w;
+
+    w = et1100_reg_read16(0x0000);
+    p_info->type     = (uint8_t)(w & 0xFFu);
+    p_info->revision = (uint8_t)((w >> 8) & 0xFFu);
+
+    p_info->build = et1100_reg_read16(0x0002);
+
+    w = et1100_reg_read16(0x0004);
+    p_info->fmmus_supported       = (uint8_t)(w & 0xFFu);
+    p_info->syncmanagers_supported = (uint8_t)((w >> 8) & 0xFFu);
+
+    w = et1100_reg_read16(0x0006);
+    p_info->ram_size_kbyte  = (uint8_t)(w & 0xFFu);
+    p_info->port_descriptor = (uint8_t)((w >> 8) & 0xFFu);
+
+    p_info->esc_features = et1100_reg_read16(0x0008);
+
+    /* ET1100 (単チャネル ESC) では FMMU=8, SyncManager=8, RAM=8KByte が既知の固定値。
+     * ここが一致しなければ、CS0BCR/CS0WCR_0 のタイミング設定・WAIT#配線・
+     * アドレス/データ配線のいずれかを疑う
+     * (04_software_bringup.md §4.12「よくあるハマりどころ」参照)。 */
+    return (p_info->fmmus_supported == 8u) &&
+           (p_info->syncmanagers_supported == 8u) &&
+           (p_info->ram_size_kbyte == 8u);
+}
+```
+
+呼び出し側の例:
+
+```c
+et1100_basic_info_t info;
+memset(&info, 0, sizeof(info));
+
+if (!et1100_startup_check(&info))
+{
+    /* info の各フィールドをデバッガで確認する。
+     * 例: 全ビットが 0x00 または 0xFF に張り付く → CS0#/RD#/WE0#/WE1#/WAIT#の
+     *     いずれかの配線・タイミング不整合、あるいは EEPROM 未ロード
+     *     (0x0110[0] を先に確認、02_et1100_overview.md 2.6節)。 */
+    __BKPT(0);
+}
+```
+
 ## 5.2 アドレス設定
 
 | アドレス | サイズ | 名称 |

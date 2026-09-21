@@ -137,7 +137,13 @@ CoE オブジェクトディクショナリの整合性チェックなど、状�
    - マスタが読み込む **ESI XML ファイル**（TwinCAT 等のマスタ設定ツールに登録）
    両者の Vendor ID/Product Code/Revision が一致しないと、マスタがスレーブを
    正しく識別できません。
-5. EEPROM 書き込み後は **10秒以内に電源断・リセットしない**（`02_et1100_overview.md` 2.7節）。
+5. **★初回（工場出荷時、EEPROMが完全にブランクの状態）は、ET1100を`RESET`状態に保持したまま
+   外部I²Cライタで`EEPROM_CLK`/`EEPROM_DATA`に直接書き込むこと。** ブランクEEPROMのままでは
+   PDI（RZ/N2Lとの非同期バス）自体が有効化されず、`02_et1100_overview.md` §2.7.1で説明する
+   「PDIレジスタ経由でEEPROMを書く」方法は**初回には使えない**（PDIがまだ生きていない）。
+   RZ/N2L経由の書き込みは、この初回書き込みで有効なPDIが立ち上がった後の更新にのみ使う。
+   全体の順序は[06_implementation_roadmap.md](06_implementation_roadmap.md) Phase 3を参照。
+6. EEPROM 書き込み後は **10秒以内に電源断・リセットしない**（`02_et1100_overview.md` 2.7節）。
 
 ## 4.7 CoE オブジェクトディクショナリと PDO マッピング（実装イメージ）
 
