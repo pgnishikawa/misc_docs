@@ -178,6 +178,9 @@ QPI（`4S-4S-4S`）は「特定のフラッシュ品番に固定してよく、�
 - [04_xspi_boot_and_runtime.md](04_xspi_boot_and_runtime.md) — xSPIブート詳細、メモリマッピング／
   マニュアルコマンドの基本、NORフラッシュ書き込み制約、XiP
 - [03_boot_modes.md](03_boot_modes.md) — 動作モード全体
+- [../../rzn2h/docs/13_xspi_protocol_modes_and_quad_flash.md](../../rzn2h/docs/13_xspi_protocol_modes_and_quad_flash.md) —
+  RZ/N2H版（同一IPブロックのため本書の内容がそのまま適用できる。ベースアドレス・
+  スループット等の仕様差分のみ別記）
 - マニュアル p.2093-2095（36.2.1.4-7 レジスタ）、p.2101-2102（36.2.2.8-9 マニュアルコマンド
   バッファ）、p.2117（36.3.1.1 対応するプロトコルモード）、p.97（3.5.4.1 x1ブート）
 

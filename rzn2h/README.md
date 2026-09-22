@@ -38,6 +38,7 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 | [10_amp_multicore_bringup_roadmap.md](10_amp_multicore_bringup_roadmap.md) | R52C0→R52C1+A55Core0-3 の AMP マルチコア・ブリングアップ ロードマップ（Master MPU、DDRSS 初期化、TZC-400、アドレス拡張、各コア起動レジスタ手順、ソフトウェア割り込みでのコア間通知）。冒頭にメモリマップ SVG 図＋ Mermaid シーケンス図あり |
 | [11_memory_performance_comparison.md](11_memory_performance_comparison.md) | TCM / SYSRAM / LPDDR4 の速度比較。R52+TCM が最速・最も決定的である理由、A55 に TCM がない制約、混在配置の指針、A55/R52 のキャッシュ構成差、TCM/SYSRAM/DDR/xSPI 各メモリでのキャッシュ有無 |
 | [12_ddr_noncacheable_region_setup.md](12_ddr_noncacheable_region_setup.md) | DDR 上のコア間共有 IPC 領域を「非キャッシュ」にする実装方法（R52 の MPU／A55 の MMU、MAIR 属性設定。※ Arm アーキテクチャ一般知識、RZ/N2H マニュアル非記載である旨を明記）|
+| [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) | xSPI プロトコルモード（1S-1S-1S〜4S-4S-4S等）の記法とRZ/N2Hが対応する7種類の一覧（RZ/N2Lと同一IPブロックのため列挙値・制約は共通）、Quad SPI NORフラッシュ接続時の実践的な設計、RZ/N2Lとの仕様差分（スループット266MB/s、マルチスレーブ数、アドレス空間サイズ） |
 | [appendix_full_toc.md](appendix_full_toc.md) | マニュアル目次の全階層（レジスタ名まで） |
 
 ## 元テキストの扱い（調査用）
