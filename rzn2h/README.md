@@ -21,6 +21,9 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 2. **xSPI0 x1 ブート固定＋全コア NORTi の AMP マルチコア・ブリングアップ**（R52 CPU0 → LPDDR4 初期化 → R52 CPU1 + Cortex-A55 Core0〜3 を個別ロード・起動）のロードマップ整備。
    → [09_xspi0_x1_boot_and_runtime.md](09_xspi0_x1_boot_and_runtime.md)（xSPI0 x1 ブート詳細＋ランタイム操作）
    → [10_amp_multicore_bringup_roadmap.md](10_amp_multicore_bringup_roadmap.md)（全体ロードマップ：DDR初期化、TZC-400、マルチコア起動レジスタ手順）
+3. **xSPI1 に Everspin MRAM (EM064LXOAB320IS2T) を8D-8D-8D接続**できるかの検証。
+   → [14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md)
+   （結論: 可能。プロトコル互換性・レジスタ設定・書き込み特有の優位点を整理）
 
 ## ドキュメント一覧
 
@@ -39,6 +42,7 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 | [11_memory_performance_comparison.md](11_memory_performance_comparison.md) | TCM / SYSRAM / LPDDR4 の速度比較。R52+TCM が最速・最も決定的である理由、A55 に TCM がない制約、混在配置の指針、A55/R52 のキャッシュ構成差、TCM/SYSRAM/DDR/xSPI 各メモリでのキャッシュ有無 |
 | [12_ddr_noncacheable_region_setup.md](12_ddr_noncacheable_region_setup.md) | DDR 上のコア間共有 IPC 領域を「非キャッシュ」にする実装方法（R52 の MPU／A55 の MMU、MAIR 属性設定。※ Arm アーキテクチャ一般知識、RZ/N2H マニュアル非記載である旨を明記）|
 | [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) | xSPI プロトコルモード（1S-1S-1S〜4S-4S-4S等）の記法とRZ/N2Hが対応する7種類の一覧（RZ/N2Lと同一IPブロックのため列挙値・制約は共通）、Quad SPI NORフラッシュ接続時の実践的な設計、RZ/N2Lとの仕様差分（スループット266MB/s、マルチスレーブ数、アドレス空間サイズ） |
+| [14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md) | Everspin MRAM (EM064LXOAB320IS2T) を xSPI1 に 8D-8D-8D 接続する検証。プロトコル互換性（プロファイル1.0との一致）、レジスタ設定、MRAM特有の書き込み優位点（消去不要・WREN1回のみ）、電圧/クロック信号の確認、要検証事項 |
 | [appendix_full_toc.md](appendix_full_toc.md) | マニュアル目次の全階層（レジスタ名まで） |
 
 ## 元テキストの扱い（調査用）
@@ -70,3 +74,4 @@ python3 -c "d=open('work/manual_full.txt').read().split('\x0c'); [open(f'work/pa
 - デバッグは段階的に解禁: **②SWJ-DP TAP と ③AP=0 OCD は RES# 保持中（ブート前）に到達可、フラッシュ内容に無関係**。**④の本格デバッグ（CoreSight ROM 列挙・コア halt）だけが「内蔵ブートコード実行の完了後」に解禁**（10.3.3 / 図 10.4・10.5）。
 - xSPI ブートでフラッシュ空／CHECK_SUM 不一致時のブート ROM 終端状態は**マニュアルに記載なし**（SCI/USB ブートのみ「エラーコード返却・中断」と明記）。→ まず **"connect under reset"** で ② まで到達するかを確認。
 - MD2:0 を振れるなら初回は **SCI ブート（101b）/ USB ブート（110b）**（失敗挙動が仕様で定義されている）。
+- **xSPI1へのMRAM (Everspin EM064LXOAB320IS2T) 8D-8D-8D接続は可能**。MRAMのxSPIフレーム構造（コマンド反復送出方式）はRZ/N2Hの「8D-8D-8Dプロファイル1.0」（`CMCFG0CSn.FFMT=01`）と一致。さらに①消去(Erase)不要のPersistent Memory Mode、②Write EnableはWEL自動クリアなしで初回のみでよい、という2点により**書き込みもメモリマッピングモードでそのまま可能**（通常のNORフラッシュには無い優位性）。詳細は[14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md)。
