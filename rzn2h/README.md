@@ -24,6 +24,10 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 3. **xSPI1 に Everspin MRAM (EM064LXOAB320IS2T) を8D-8D-8D接続**できるかの検証。
    → [14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md)
    （結論: 可能。プロトコル互換性・レジスタ設定・書き込み特有の優位点を整理）
+   → [15_mram_octal_memory_mapped_write_init.md](15_mram_octal_memory_mapped_write_init.md)
+   （メモリマッピングモードでの8D-8D-8D書き込みを実現するための、レジスタ単位の詳細初期化手順）
+   → [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md)
+   （ソフトウェア担当者向けMRAM基礎知識まとめ）
 
 ## ドキュメント一覧
 
@@ -43,6 +47,8 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 | [12_ddr_noncacheable_region_setup.md](12_ddr_noncacheable_region_setup.md) | DDR 上のコア間共有 IPC 領域を「非キャッシュ」にする実装方法（R52 の MPU／A55 の MMU、MAIR 属性設定。※ Arm アーキテクチャ一般知識、RZ/N2H マニュアル非記載である旨を明記）|
 | [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) | xSPI プロトコルモード（1S-1S-1S〜4S-4S-4S等）の記法とRZ/N2Hが対応する7種類の一覧（RZ/N2Lと同一IPブロックのため列挙値・制約は共通）、Quad SPI NORフラッシュ接続時の実践的な設計、RZ/N2Lとの仕様差分（スループット266MB/s、マルチスレーブ数、アドレス空間サイズ） |
 | [14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md) | Everspin MRAM (EM064LXOAB320IS2T) を xSPI1 に 8D-8D-8D 接続する検証。プロトコル互換性（プロファイル1.0との一致）、レジスタ設定、MRAM特有の書き込み優位点（消去不要・WREN1回のみ）、電圧/クロック信号の確認、要検証事項 |
+| [15_mram_octal_memory_mapped_write_init.md](15_mram_octal_memory_mapped_write_init.md) | MRAMへの8D-8D-8Dメモリマッピング書き込みを実現するための初期化手順をレジスタ単位で詳細化。端子設定(PMCm/PFCm)、xSPI1モジュール有効化(PRCRN/PRCRS, MRCTLA/MSTPCRA, SSTPCR6のREQ/ACK)、1S-1S-1SマニュアルコマンドでのWREN/VCR0書き込み、プロトコル切替の同期ポイント、メモリマッピング有効化、動作検証手順 |
+| [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md) | ソフトウェア担当者向けMRAM基礎知識まとめ。STT-MRAMの特性、Persistent Memory Mode、WELのスティッキー動作、対応プロトコルモード、主要設定レジスタ(NVCR/VCR)、リセット/Deep Power Down挙動、電気的基礎 |
 | [appendix_full_toc.md](appendix_full_toc.md) | マニュアル目次の全階層（レジスタ名まで） |
 
 ## 元テキストの扱い（調査用）
@@ -74,4 +80,7 @@ python3 -c "d=open('work/manual_full.txt').read().split('\x0c'); [open(f'work/pa
 - デバッグは段階的に解禁: **②SWJ-DP TAP と ③AP=0 OCD は RES# 保持中（ブート前）に到達可、フラッシュ内容に無関係**。**④の本格デバッグ（CoreSight ROM 列挙・コア halt）だけが「内蔵ブートコード実行の完了後」に解禁**（10.3.3 / 図 10.4・10.5）。
 - xSPI ブートでフラッシュ空／CHECK_SUM 不一致時のブート ROM 終端状態は**マニュアルに記載なし**（SCI/USB ブートのみ「エラーコード返却・中断」と明記）。→ まず **"connect under reset"** で ② まで到達するかを確認。
 - MD2:0 を振れるなら初回は **SCI ブート（101b）/ USB ブート（110b）**（失敗挙動が仕様で定義されている）。
-- **xSPI1へのMRAM (Everspin EM064LXOAB320IS2T) 8D-8D-8D接続は可能**。MRAMのxSPIフレーム構造（コマンド反復送出方式）はRZ/N2Hの「8D-8D-8Dプロファイル1.0」（`CMCFG0CSn.FFMT=01`）と一致。さらに①消去(Erase)不要のPersistent Memory Mode、②Write EnableはWEL自動クリアなしで初回のみでよい、という2点により**書き込みもメモリマッピングモードでそのまま可能**（通常のNORフラッシュには無い優位性）。詳細は[14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md)。
+- **xSPI1へのMRAM (Everspin EM064LXOAB320IS2T) 8D-8D-8D接続は可能**。MRAMのxSPIフレーム構造（コマンド反復送出方式）はRZ/N2Hの「8D-8D-8Dプロファイル1.0」（`CMCFG0CSn.FFMT=01`）と一致。さらに①消去(Erase)不要のPersistent Memory Mode、②Write EnableはWEL自動クリアなしで初回のみでよい、という2点により**書き込みもメモリマッピングモードでそのまま可能**（通常のNORフラッシュには無い優位性）。詳細は[14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md)、レジスタ単位の初期化手順は[15_mram_octal_memory_mapped_write_init.md](15_mram_octal_memory_mapped_write_init.md)。
+- **RZ/N2Hのユニット別xSPI端子の非対称性に注意**：`XSPIm_CKN`（差動クロック負側）と`XSPIm_RESET0#/1#`等（表37.2 注1）は**ユニット0（xSPI0）専用**で、xSPI1には端子自体が存在しない。xSPI1にMRAM等を接続する場合、クロックは元々単相前提でよいが、**ソフトウェアからのハードウェアリセット制御はできない**（外部プルアップ、または`0x66`+`0x99`のソフトウェアリセットコマンドに頼る設計が必要）。
+- **xSPI1の信号(`XSPI1_*`)はP01/P02ポートの汎用GPIOと共用ピン**（PFC機能コード`0x1C`）であり、専用ブート端子ではない。使用前に`PMCm`/`PFCm`の設定（`PRCRS.PRC2`のロック解除を伴う）が必要（[15](15_mram_octal_memory_mapped_write_init.md) §2）。
+- **RZ/N2Hのモジュール有効化はRZ/N2Lより1段階多い**：①`MRCTLA`でモジュールリセット解除→②`MSTPCRA`でモジュールストップ解除→③`SSTPCR6`の`xxx_REQ`/`xxx_ACK`によるスレーブバスストップ解除、の3段階が必要（13.4.3）。RZ/N2Lの`MSTPCRA`のみで完結する単純な方式とは異なる。
