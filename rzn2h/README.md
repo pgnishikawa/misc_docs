@@ -28,6 +28,8 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
    （メモリマッピングモードでの8D-8D-8D書き込みを実現するための、レジスタ単位の詳細初期化手順）
    → [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md)
    （ソフトウェア担当者向けMRAM基礎知識まとめ）
+   → [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md)
+   （EST3000準拠：工場出荷後に1回だけ必要な初回初期化(DFIM)手順。ソフトウェア実装が必要）
 
 ## ドキュメント一覧
 
@@ -49,6 +51,7 @@ Cortex-A55／Cortex-R52 の MMU/MPU・キャッシュ・ブート手順（Arm �
 | [14_mram_em064lx_xspi1_octal_connection.md](14_mram_em064lx_xspi1_octal_connection.md) | Everspin MRAM (EM064LXOAB320IS2T) を xSPI1 に 8D-8D-8D 接続する検証。プロトコル互換性（プロファイル1.0との一致）、レジスタ設定、MRAM特有の書き込み優位点（消去不要・WREN1回のみ）、電圧/クロック信号の確認、要検証事項 |
 | [15_mram_octal_memory_mapped_write_init.md](15_mram_octal_memory_mapped_write_init.md) | MRAMへの8D-8D-8Dメモリマッピング書き込みを実現するための初期化手順をレジスタ単位で詳細化。端子設定(PMCm/PFCm)、xSPI1モジュール有効化(PRCRN/PRCRS, MRCTLA/MSTPCRA, SSTPCR6のREQ/ACK)、1S-1S-1SマニュアルコマンドでのWREN/VCR0書き込み、プロトコル切替の同期ポイント、メモリマッピング有効化、動作検証手順 |
 | [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md) | ソフトウェア担当者向けMRAM基礎知識まとめ。STT-MRAMの特性、Persistent Memory Mode、WELのスティッキー動作、対応プロトコルモード、主要設定レジスタ(NVCR/VCR)、リセット/Deep Power Down挙動、電気的基礎 |
+| [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md) | Everspin Application Note EST3000準拠。工場出荷後（リフロー半田付け後）に1回だけ必要な初回初期化(DFIM)手順。Status Register/NVCR0-12/OTP領域/メモリアレイ全体の初期化シーケンス、JESD252シグナルシーケンスリセットの詳細、電源投入タイミング要件(tPU=350µs)、リカバリフロー、RZ/N2Hマニュアルコマンドへの実装対応 |
 | [appendix_full_toc.md](appendix_full_toc.md) | マニュアル目次の全階層（レジスタ名まで） |
 
 ## 元テキストの扱い（調査用）
@@ -84,3 +87,5 @@ python3 -c "d=open('work/manual_full.txt').read().split('\x0c'); [open(f'work/pa
 - **RZ/N2Hのユニット別xSPI端子の非対称性に注意**：`XSPIm_CKN`（差動クロック負側）と`XSPIm_RESET0#/1#`等（表37.2 注1）は**ユニット0（xSPI0）専用**で、xSPI1には端子自体が存在しない。xSPI1にMRAM等を接続する場合、クロックは元々単相前提でよいが、**ソフトウェアからのハードウェアリセット制御はできない**（外部プルアップ、または`0x66`+`0x99`のソフトウェアリセットコマンドに頼る設計が必要）。
 - **xSPI1の信号(`XSPI1_*`)はP01/P02ポートの汎用GPIOと共用ピン**（PFC機能コード`0x1C`）であり、専用ブート端子ではない。使用前に`PMCm`/`PFCm`の設定（`PRCRS.PRC2`のロック解除を伴う）が必要（[15](15_mram_octal_memory_mapped_write_init.md) §2）。
 - **RZ/N2Hのモジュール有効化はRZ/N2Lより1段階多い**：①`MRCTLA`でモジュールリセット解除→②`MSTPCRA`でモジュールストップ解除→③`SSTPCR6`の`xxx_REQ`/`xxx_ACK`によるスレーブバスストップ解除、の3段階が必要（13.4.3）。RZ/N2Lの`MSTPCRA`のみで完結する単純な方式とは異なる。
+- **MRAMはリフロー半田付け直後、内部状態が未定義**（Everspin Application Note EST3000）。運用開始前に**工場出荷後1回だけ**、Status Register・NVCR0-12・OTP領域・メモリアレイ全体を`0x00`→`0xFF`で強制的に埋めて検証する「DFIM（Device Factory Initialization Mode）」初期化が必須。125℃1時間以上の温度暴露やリワークでも再実施が必要。通常運用の起動シーケンス（[15](15_mram_octal_memory_mapped_write_init.md)）とは別物で、量産テスト工程等での実施を想定。詳細は[17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md)。
+- 通常の電源投入・リセット時も、MRAMへの最初のコマンド発行前に**`tPU=350µs`（電源投入後）または`200ns`（リセット後）のウェイトが必要**（EST3000 Figure 2）。[15](15_mram_octal_memory_mapped_write_init.md)には未記載だった抜けているタイミング要件。

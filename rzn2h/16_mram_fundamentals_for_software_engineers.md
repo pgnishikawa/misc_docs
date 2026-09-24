@@ -164,7 +164,9 @@ MRAMのリセット手段は3種類あり、**いずれもVolatile Configuration
 > (3)JESD252シグナルシーケンス（RZ/N2Hのxsコマンド機構における
 > 「パターン要求のフロー」`LPCTLn.PATREQ`が対応する可能性がある。マニュアル
 > 37.4.7.7参照。本ドキュメント・[15](15_mram_octal_memory_mapped_write_init.md)では
-> 未検証・未実装）を検討する。
+> 未検証・未実装）を検討する。JESD252シグナルシーケンスの具体的なタイミング
+> 仕様（`tSL`/`tSH`/`tDVSR`/`tSDVR`）とGPIOビットバンギングによる実装方針は
+> [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md) §2を参照。
 
 **Deep Power Down**（`0xB9`で入る、`0xAB`または各種リセットで出る）は最低消費電力
 モード（typ. 290µA）。Deep Power Down中は`Exit`/`Reset Enable`/`Reset`以外の
@@ -208,6 +210,7 @@ MRAMのリセット手段は3種類あり、**いずれもVolatile Configuration
 | xSPIのプロトコルモード全般の仕組み（RZ/N2H共通知識） | [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) |
 | メモリマッピング／マニュアルコマンドモードの基本、NORフラッシュとの一般的な違い | [09_xspi0_x1_boot_and_runtime.md](09_xspi0_x1_boot_and_runtime.md) §2 |
 | xSPI1のアドレス空間 | [03_memory_map.md](03_memory_map.md) |
+| **工場出荷後（リフロー半田付け後）に1回だけ必要な初期化(DFIM)、JESD252リセットの具体的なタイミング** | [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md) |
 
 ## 11. まとめ：一言で言うと
 

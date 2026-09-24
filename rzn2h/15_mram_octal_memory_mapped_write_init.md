@@ -29,6 +29,15 @@ MRAM側は `MRAM/EMxxxLX_B_HR Datasheet v3.7_0.pdf`（以下「MRAM DS」）。
 - CS1（2個目のスレーブ）は使用しない前提。使う場合は本ドキュメントの`CS0`関連箇所を
   `CS1`に読み替え、`BMCTL0.CS1ACC`等の対応ビットを使うこと。
 
+> **本ドキュメントの範囲外（別ドキュメント参照）**: 以下は
+> [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md)
+> を参照すること。
+> - MRAMは**工場出荷後（リフロー半田付け後）の初回は内部状態が未定義**であり、
+>   本ドキュメントの手順を実行する前に**1回だけ**「DFIM（Device Factory
+>   Initialization Mode）」による全域初期化が必要（量産テスト工程等での実施を想定）
+> - 電源投入からMRAMへ最初のコマンドを発行するまでに**`tPU=350µs`**、
+>   リセット発行からは**`200ns`**のウェイトが必要（本ドキュメントには含めていない）
+
 ## 1. 全体シーケンス概要
 
 電源投入（またはRZ/N2Hのシステムリセット解除）後、1回だけ実行する手順：
@@ -483,6 +492,9 @@ int mram_check_wel_octal_dtr(void)
   互換性の結論、レジスタ設定値の根拠、信号・電圧、要検証事項
 - [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md) —
   MRAMの基礎知識まとめ
+- [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md) —
+  工場出荷後に1回だけ必要な初回初期化(DFIM)手順、および本ドキュメントに含めていなかった
+  電源投入タイミング要件（`tPU=350µs`等）
 - [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) —
   プロトコルモード一覧、通信停止手順の位置づけ
 - マニュアル 6章（リセット, MRCTLA）、9章（低消費電力機能, MSTPCRA）、

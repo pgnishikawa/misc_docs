@@ -243,6 +243,8 @@ Volatile設定は**電源断で失われる**ため、電源投入のたびに�
   メモリマッピング書き込みの検証手順）
 - [16_mram_fundamentals_for_software_engineers.md](16_mram_fundamentals_for_software_engineers.md) —
   ソフトウェア担当者向けMRAM基礎知識まとめ（本ドキュメントの前提知識、リファレンス用）
+- [17_mram_est3000_factory_initialization.md](17_mram_est3000_factory_initialization.md) —
+  EST3000準拠：工場出荷後に1回だけ必要な初回初期化(DFIM)手順（本ドキュメント・[15](15_mram_octal_memory_mapped_write_init.md)の運用フローとは別に、先行して1回実施が必要）
 - [13_xspi_protocol_modes_and_quad_flash.md](13_xspi_protocol_modes_and_quad_flash.md) —
   RZ/N2Hのプロトコルモード列挙値、レジスタ共通仕様
 - [09_xspi0_x1_boot_and_runtime.md](09_xspi0_x1_boot_and_runtime.md) —
